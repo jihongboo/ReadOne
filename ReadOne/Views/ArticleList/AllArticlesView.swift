@@ -1,5 +1,5 @@
 //
-//  ArticleListContentView.swift
+//  AllArticlesView.swift
 //  ReadOne
 //
 //  Created by 纪洪波 on 11/30/25.
@@ -8,14 +8,11 @@
 import SwiftData
 import SwiftUI
 
-// MARK: - 文章列表视图（用于全部文章和收藏）
-struct ArticleListContentView: View {
+struct AllArticlesView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.openWindow) private var openWindow
-    let articles: [Article]
-    let title: String
+    @Query(sort: \Article.publishedDate, order: .reverse) private var articles: [Article]
     @Binding var selectedArticle: Article?
-    var showEmpty: Bool = false
 
     var body: some View {
         List(selection: $selectedArticle) {
@@ -38,16 +35,7 @@ struct ArticleListContentView: View {
             .onDelete(perform: deleteArticles)
         }
         .focusedSceneValue(\.selectedArticle, selectedArticle)
-        .navigationTitle(title)
-        .overlay {
-            if showEmpty && articles.isEmpty {
-                ContentUnavailableView(
-                    "No Starred Articles",
-                    systemImage: "star",
-                    description: Text("Starred articles will appear here")
-                )
-            }
-        }
+        .navigationTitle("All Articles")
     }
 
     private func deleteArticles(at offsets: IndexSet) {
@@ -68,25 +56,9 @@ struct ArticleListContentView: View {
     }
 }
 
-#Preview("With Articles") {
+#Preview {
     NavigationStack {
-        ArticleListContentView(
-            articles: MockData.sampleFeed.articles,
-            title: "全部文章",
-            selectedArticle: .constant(nil)
-        )
-    }
-    .modelContainer(PreviewContainer.shared)
-}
-
-#Preview("Empty") {
-    NavigationStack {
-        ArticleListContentView(
-            articles: [],
-            title: "收藏",
-            selectedArticle: .constant(nil),
-            showEmpty: true
-        )
+        AllArticlesView(selectedArticle: .constant(nil))
     }
     .modelContainer(PreviewContainer.shared)
 }

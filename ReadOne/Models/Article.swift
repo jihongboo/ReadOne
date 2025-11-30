@@ -11,7 +11,7 @@ import SwiftData
 @Model
 final class Article {
     var title: String
-    var link: String
+    var link: URL
     var articleDescription: String
     var content: String
     var author: String
@@ -19,19 +19,19 @@ final class Article {
     var isRead: Bool
     var isStarred: Bool
     var guid: String
-    var imageURL: String?
+    var imageURL: URL?
 
     var feed: Feed?
 
     init(
         title: String,
-        link: String,
+        link: URL,
         articleDescription: String = "",
         content: String = "",
         author: String = "",
         publishedDate: Date = Date(),
         guid: String,
-        imageURL: String? = nil
+        imageURL: URL? = nil
     ) {
         self.title = title
         self.link = link

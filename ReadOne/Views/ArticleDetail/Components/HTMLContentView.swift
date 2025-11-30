@@ -9,16 +9,39 @@ import SwiftUI
 import WebKit
 
 struct HTMLContentView: View {
-    let html: String
+    let title: String
+    let author: String
+    let feedTitle: String?
+    let publishedDate: Date
+    let content: String
 
     @State private var page = WebPage(navigationDecider: ExternalLinkNavigationDecider())
 
     var body: some View {
         WebView(page)
             .webViewContentBackground(.hidden)
-            .onAppear {
+            .task(id: content) {
                 page.load(html: styledHTML, baseURL: URL(string: "about:blank")!)
             }
+    }
+
+    private var formattedDate: String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return formatter.string(from: publishedDate)
+    }
+
+    private var metaInfo: String {
+        var parts: [String] = []
+        if let feedTitle, !feedTitle.isEmpty {
+            parts.append("<span class=\"feed-title\">\(feedTitle.escapedForHTML)</span>")
+        }
+        if !author.isEmpty {
+            parts.append("<span class=\"author\">\(author.escapedForHTML)</span>")
+        }
+        parts.append("<span class=\"date\">\(formattedDate)</span>")
+        return parts.joined(separator: "<span class=\"separator\">·</span>")
     }
 
     private var styledHTML: String {
@@ -45,6 +68,33 @@ struct HTMLContentView: View {
                         --text-color: #fff;
                     }
                 }
+                /* Header styles */
+                .article-header {
+                    margin-bottom: 24px;
+                    padding-bottom: 16px;
+                    border-bottom: 1px solid rgba(128, 128, 128, 0.3);
+                }
+                .article-title {
+                    font-size: 28px;
+                    font-weight: bold;
+                    line-height: 1.3;
+                    margin: 0 0 12px 0;
+                }
+                .article-meta {
+                    font-size: 14px;
+                    color: rgba(128, 128, 128, 0.8);
+                    display: flex;
+                    flex-wrap: wrap;
+                    align-items: center;
+                    gap: 4px;
+                }
+                .article-meta .feed-title {
+                    color: #007AFF;
+                }
+                .article-meta .separator {
+                    margin: 0 4px;
+                }
+                /* Content styles */
                 img {
                     max-width: 100%;
                     height: auto;
@@ -78,10 +128,28 @@ struct HTMLContentView: View {
             </style>
         </head>
         <body>
-            \(html)
+            <header class="article-header">
+                <h1 class="article-title">\(title.escapedForHTML)</h1>
+                <div class="article-meta">\(metaInfo)</div>
+            </header>
+            <article>
+                \(content)
+            </article>
         </body>
         </html>
         """
+    }
+}
+
+// MARK: - String Extension for HTML Escaping
+
+extension String {
+    fileprivate var escapedForHTML: String {
+        self.replacingOccurrences(of: "&", with: "&amp;")
+            .replacingOccurrences(of: "<", with: "&lt;")
+            .replacingOccurrences(of: ">", with: "&gt;")
+            .replacingOccurrences(of: "\"", with: "&quot;")
+            .replacingOccurrences(of: "'", with: "&#39;")
     }
 }
 
@@ -105,5 +173,11 @@ class ExternalLinkNavigationDecider: WebPage.NavigationDeciding {
 }
 
 #Preview {
-    HTMLContentView(html: MockData.sampleHTMLContent)
+    HTMLContentView(
+        title: "Sample Article Title",
+        author: "John Doe",
+        feedTitle: "Tech Blog",
+        publishedDate: Date(),
+        content: MockData.sampleHTMLContent
+    )
 }

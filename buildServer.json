@@ -1,0 +1,12 @@
+{
+  "name": "xcode build server",
+  "version": "0.2",
+  "bspVersion": "2.0",
+  "languages": ["swift", "objective-c", "objective-cpp", "c", "cpp"],
+  "argv": [
+    "/Applications/Xcode.app/Contents/SharedFrameworks/XCBuild.framework/Versions/A/Support/xcode-build-server"
+  ],
+  "rootUri": "file:///Users/jihongbo/Developer/ReadOne",
+  "indexDatabasePath": ".build/Index.noindex/DataStore",
+  "indexStorePath": ".build/Index.noindex/DataStore"
+}

@@ -15,59 +15,24 @@ struct ArticleDetailView: View {
     @State private var showSummary = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            VStack(alignment: .leading, spacing: 16) {
-                // 标题
-                Text(article.title)
-                    .font(.title)
-                    .fontWeight(.bold)
-
-                // 元信息
-                HStack {
-                    if let feedTitle = article.feed?.title {
-                        Text(feedTitle)
-                            .foregroundStyle(Color.accentColor)
-                    }
-
-                    if !article.author.isEmpty {
-                        Text("·")
-                        Text(article.author)
-                    }
-
-                    Text("·")
-                    Text(article.publishedDate, style: .date)
-                }
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-
-                // AI 总结区域
-                if summarizationService.isAvailable {
-                    AISummaryView(
-                        service: summarizationService,
-                        showSummary: $showSummary,
-                        onSummarize: {
-                            let content =
-                                article.content.isEmpty
-                                ? article.articleDescription : article.content
-                            Task {
-                                await summarizationService.summarize(
-                                    title: article.title, content: content)
-                            }
-                        }
-                    )
-                }
-
-                Divider()
-            }
-            .scenePadding()
-
-            // 文章内容
+        VStack(spacing: 0) {
+            // 文章内容（标题、元信息和正文一起滚动）
             if !article.content.isEmpty {
-                HTMLContentView(html: article.content)
-                    .frame(minHeight: 300)
+                HTMLContentView(
+                    title: article.title,
+                    author: article.author,
+                    feedTitle: article.feed?.title,
+                    publishedDate: article.publishedDate,
+                    content: article.content
+                )
             } else if !article.articleDescription.isEmpty {
-                Text(article.articleDescription.stripHTML())
-                    .font(.body)
+                HTMLContentView(
+                    title: article.title,
+                    author: article.author,
+                    feedTitle: article.feed?.title,
+                    publishedDate: article.publishedDate,
+                    content: article.articleDescription
+                )
             } else {
                 ContentUnavailableView(
                     "No Content",
@@ -85,7 +50,7 @@ struct ArticleDetailView: View {
                 // AI 总结按钮
                 if summarizationService.isAvailable {
                     Button {
-                        if summarizationService.summary.isEmpty {
+                        if summarizationService.summary.isEmpty && !summarizationService.isLoading {
                             let content =
                                 article.content.isEmpty
                                 ? article.articleDescription : article.content
@@ -93,15 +58,19 @@ struct ArticleDetailView: View {
                                 await summarizationService.summarize(
                                     title: article.title, content: content)
                             }
-                            showSummary = true
-                        } else {
-                            showSummary.toggle()
                         }
+                        showSummary = true
                     } label: {
-                        Image(systemName: "sparkles")
+                        Image(systemName: "apple.intelligence")
                             .symbolEffect(.pulse, isActive: summarizationService.isLoading)
+                            .foregroundStyle(
+                                (showSummary && !summarizationService.isLoading)
+                                    ? .orange : .primary)
                     }
                     .help("AI 总结")
+                    .popover(isPresented: $showSummary) {
+                        AISummaryPopoverView(service: summarizationService)
+                    }
                 }
 
                 Button {
@@ -117,23 +86,19 @@ struct ArticleDetailView: View {
                     Image(systemName: article.isRead ? "envelope.open" : "envelope")
                 }
 
-                if let url = URL(string: article.link) {
-                    ShareLink(item: url)
+                ShareLink(item: article.link)
 
-                    Button {
-                        openURL(url)
-                    } label: {
-                        Image(systemName: "safari")
-                    }
+                Button {
+                    openURL(article.link)
+                } label: {
+                    Image(systemName: "safari")
                 }
             }
         }
-        .onAppear {
+        .task(id: article.id) {
             if !article.isRead {
                 article.isRead = true
             }
-        }
-        .onChange(of: article.id) {
             // 切换文章时清除之前的总结
             summarizationService.clear()
             showSummary = false
@@ -141,62 +106,49 @@ struct ArticleDetailView: View {
     }
 }
 
-// MARK: - AI Summary View Component
-struct AISummaryView: View {
+// MARK: - AI Summary Popover View
+struct AISummaryPopoverView: View {
     var service: SummarizationService
-    @Binding var showSummary: Bool
-    var onSummarize: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // 总结按钮或展开/收起
-            Button {
-                if service.summary.isEmpty && !service.isLoading {
-                    showSummary.toggle()
-                }
-            } label: {
-                VStack {
-                    HStack {
-                        Label("AI 总结", systemImage: "sparkles")
-                            .fontWeight(.medium)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Label("AI 总结", systemImage: "sparkles")
+                        .font(.headline)
 
-                        Spacer()
+                    Spacer()
 
-                        if service.isLoading {
-                            ProgressView()
-                                .controlSize(.mini)
-                        }
-                    }
-
-                    // 总结内容
-                    if showSummary {
-                        if let error = service.error {
-                            Divider()
-                            HStack {
-                                Image(systemName: "exclamationmark.triangle")
-                                    .foregroundStyle(.orange)
-                                Text(error)
-                                    .font(.callout)
-                                    .foregroundStyle(.secondary)
-                                Spacer()
-                            }
-                        } else if !service.summary.isEmpty {
-                            Divider()
-                            Text(service.summary)
-                                .font(.callout)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
+                    if service.isLoading {
+                        ProgressView()
+                            .controlSize(.small)
                     }
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-                .background(
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(Color.purple.opacity(0.1))
-                )
+
+                Divider()
+
+                if let error = service.error {
+                    HStack(alignment: .top) {
+                        Image(systemName: "exclamationmark.triangle")
+                            .foregroundStyle(.orange)
+                        Text(error)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                } else if service.isLoading {
+                    Text("正在生成总结...")
+                        .foregroundStyle(.secondary)
+                } else if !service.summary.isEmpty {
+                    Text(service.summary)
+                        .fixedSize(horizontal: false, vertical: true)
+                } else {
+                    Text("暂无总结")
+                        .foregroundStyle(.secondary)
+                }
             }
-            .buttonStyle(.plain)
+            .padding()
         }
+        .frame(width: 350, height: 400)
     }
 }
 

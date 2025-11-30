@@ -16,7 +16,7 @@ struct FeedRowView: View {
 
     var body: some View {
         HStack {
-            AsyncImage(url: URL(string: feed.imageURL ?? "")) { image in
+            AsyncImage(url: feed.imageURL) { image in
                 image
                     .resizable()
                     .aspectRatio(contentMode: .fill)
@@ -81,9 +81,9 @@ struct FeedRowView: View {
     private func copyFeedURL() {
         #if os(macOS)
             NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(feed.url, forType: .string)
+            NSPasteboard.general.setString(feed.url.absoluteString, forType: .string)
         #else
-            UIPasteboard.general.string = feed.url
+            UIPasteboard.general.string = feed.url.absoluteString
         #endif
     }
 }

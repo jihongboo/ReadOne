@@ -11,9 +11,9 @@ import SwiftData
 @Model
 final class Feed {
     var title: String
-    var url: String
+    var url: URL
     var feedDescription: String
-    var imageURL: String?
+    var imageURL: URL?
     var lastUpdated: Date
     var createdAt: Date
     var useFullText: Bool
@@ -26,15 +26,15 @@ final class Feed {
     }
 
     /// 返回实际用于获取内容的 URL（如果启用全文模式则使用 FeedEx 代理）
-    var fetchURL: String {
+    var fetchURL: URL {
         if useFullText {
-            return "https://feedex.net/feed/\(url)"
+            return URL(string: "https://feedex.net/feed/\(url.absoluteString)")!
         }
         return url
     }
 
     init(
-        title: String, url: String, feedDescription: String = "", imageURL: String? = nil,
+        title: String, url: URL, feedDescription: String = "", imageURL: URL? = nil,
         useFullText: Bool = true
     ) {
         self.title = title

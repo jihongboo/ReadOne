@@ -21,63 +21,83 @@ struct ArticleRowView: View {
                         .foregroundStyle(.secondary)
                 }
 
-                Text(article.title)
-                    .font(.headline)
-                    .lineLimit(2)
-                    .foregroundStyle(article.isRead ? .secondary : .primary)
+                HStack {
+                    if article.isStarred {
+                        let star = Text(Image(systemName: "star.fill"))
+                            .foregroundStyle(.orange)
+                            .font(.caption)
+                        Text("\(star) \(article.title)")
+                    } else {
+                        Text(article.title)
+                    }
+                }
+                .font(.headline)
+                .lineLimit(2)
+                .foregroundStyle(article.isRead ? .secondary : .primary)
 
                 Text(article.articleDescription.stripHTML())
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-                    .lineLimit(2)
+                    .lineLimit(3)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                HStack {
-                    Text(article.publishedDate, style: .relative)
+                Spacer()
 
-                    if !article.author.isEmpty {
-                        Text("·")
-                        Text(article.author)
-                    }
-
-                    if article.isStarred {
-                        Spacer()
-                        Image(systemName: "star.fill")
-                            .foregroundStyle(.orange)
-                            .font(.caption)
-                    }
+                ViewThatFits(in: .horizontal) {
+                    InformationView(article: article, isCompact: false)
+                    InformationView(article: article, isCompact: true)
                 }
-                .font(.caption)
-                .foregroundStyle(.secondary)
             }
 
-            if let imageURL = article.imageURL, let url = URL(string: imageURL) {
-                AsyncImage(url: url) { image in
+            if let imageURL = article.imageURL {
+                AsyncImage(url: imageURL) { image in
                     image
                         .resizable()
-                        .aspectRatio(contentMode: .fill)
+                        .aspectRatio(1, contentMode: .fit)
                 } placeholder: {
                     Color.gray.opacity(0.2)
+                        .aspectRatio(1, contentMode: .fit)
                 }
-                .frame(width: 80, height: 80)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
             }
         }
-        .padding(.vertical, 4)
+        .frame(height: 80)
+    }
+
+    struct InformationView: View {
+        let article: Article
+        let isCompact: Bool
+
+        var body: some View {
+            HStack {
+                Text(article.publishedDate, style: .relative)
+
+                if !isCompact, !article.author.isEmpty {
+                    Text("·")
+                    Text(article.author)
+                        .lineLimit(1)
+                }
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
     }
 }
 
 #Preview("Default") {
     ArticleRowView(article: MockData.sampleArticle, showFeedName: true)
         .modelContainer(PreviewContainer.shared)
+        .frame(width: 280)
 }
 
 #Preview("Read Article") {
     ArticleRowView(article: MockData.sampleReadArticle)
         .modelContainer(PreviewContainer.shared)
+        .frame(width: 280)
 }
 
 #Preview("Starred Article") {
     ArticleRowView(article: MockData.sampleStarredArticle, showFeedName: true)
         .modelContainer(PreviewContainer.shared)
+        .frame(width: 280)
 }

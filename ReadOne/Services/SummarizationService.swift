@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Observation
 
 #if canImport(FoundationModels)
     import FoundationModels

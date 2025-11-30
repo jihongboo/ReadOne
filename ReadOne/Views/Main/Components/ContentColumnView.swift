@@ -10,32 +10,19 @@ import SwiftUI
 
 struct ContentColumnView: View {
     let selectedSection: SidebarSection?
-    let allArticles: [Article]
-    let starredArticles: [Article]
     @Binding var selectedArticle: Article?
-    let modelContext: ModelContext
-    
+
     var body: some View {
         if let selectedSection {
             switch selectedSection {
             case .allArticles:
-                ArticleListContentView(
-                    articles: allArticles,
-                    title: String(localized: "All Articles"),
-                    selectedArticle: $selectedArticle
-                )
+                AllArticlesView(selectedArticle: $selectedArticle)
             case .starred:
-                ArticleListContentView(
-                    articles: starredArticles,
-                    title: String(localized: "Starred"),
-                    selectedArticle: $selectedArticle,
-                    showEmpty: true
-                )
+                StarredArticlesView(selectedArticle: $selectedArticle)
             case .feed(let feed):
                 FeedArticleListView(
                     feed: feed,
-                    selectedArticle: $selectedArticle,
-                    modelContext: modelContext
+                    selectedArticle: $selectedArticle
                 )
             }
         } else {

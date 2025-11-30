@@ -21,7 +21,7 @@ struct EditFeedView: View {
     init(feed: Feed) {
         self.feed = feed
         _title = State(initialValue: feed.title)
-        _urlString = State(initialValue: feed.url)
+        _urlString = State(initialValue: feed.url.absoluteString)
         _feedDescription = State(initialValue: feed.feedDescription)
         _useFullText = State(initialValue: feed.useFullText)
     }
@@ -92,7 +92,9 @@ struct EditFeedView: View {
 
     private func saveFeed() {
         feed.title = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        feed.url = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let url = URL(string: urlString.trimmingCharacters(in: .whitespacesAndNewlines)) {
+            feed.url = url
+        }
         feed.feedDescription = feedDescription.trimmingCharacters(in: .whitespacesAndNewlines)
         feed.useFullText = useFullText
         dismiss()

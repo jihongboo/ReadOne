@@ -34,32 +34,27 @@ enum RSSError: LocalizedError {
 struct ParsedFeedResult {
     let title: String
     let description: String
-    let imageURL: String?
+    let imageURL: URL?
     let articles: [ParsedArticleResult]
 }
 
 struct ParsedArticleResult {
     let title: String
-    let link: String
+    let link: URL?
     let description: String
     let content: String
     let author: String
     let publishedDate: Date
     let guid: String
-    let imageURL: String?
+    let imageURL: URL?
 }
 
-@MainActor
 class RSSService {
     static let shared = RSSService()
 
     private init() {}
 
-    func fetchFeed(from urlString: String) async throws -> ParsedFeedResult {
-        guard let url = URL(string: urlString) else {
-            throw RSSError.invalidURL
-        }
-
+    func fetchFeed(from url: URL) async throws -> ParsedFeedResult {
         let data: Data
         do {
             let (responseData, _) = try await URLSession.shared.data(from: url)
@@ -72,7 +67,7 @@ class RSSService {
             throw RSSError.noData
         }
 
-        return try parseFeedData(data, url: urlString)
+        return try parseFeedData(data, url: url.absoluteString)
     }
 
     private func parseFeedData(_ data: Data, url: String) throws -> ParsedFeedResult {
@@ -95,20 +90,20 @@ class RSSService {
 
             return ParsedArticleResult(
                 title: item.title ?? "无标题",
-                link: item.url ?? item.externalURL ?? "",
+                link: URL(string: item.url ?? item.externalURL ?? ""),
                 description: item.summary ?? "",
                 content: item.contentHTML ?? item.contentText ?? item.summary ?? "",
                 author: item.authors?.first?.name ?? "",
                 publishedDate: item.datePublished ?? item.dateModified ?? Date(),
                 guid: item.uniqueID,
-                imageURL: imageURL
+                imageURL: imageURL.flatMap { URL(string: $0) }
             )
         }
 
         return ParsedFeedResult(
             title: parsedFeed.title ?? "未知订阅源",
             description: parsedFeed.homePageURL ?? "",
-            imageURL: parsedFeed.iconURL,
+            imageURL: parsedFeed.iconURL.flatMap { URL(string: $0) },
             articles: articles
         )
     }

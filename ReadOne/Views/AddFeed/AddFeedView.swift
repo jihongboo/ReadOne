@@ -138,9 +138,9 @@ struct AddFeedView: View {
         let trimmedURL = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedURL.isEmpty else { return }
 
-        var finalURL = trimmedURL
-        if !finalURL.hasPrefix("http://") && !finalURL.hasPrefix("https://") {
-            finalURL = "https://" + finalURL
+        var finalURLString = trimmedURL
+        if !finalURLString.hasPrefix("http://") && !finalURLString.hasPrefix("https://") {
+            finalURLString = "https://" + finalURLString
         }
 
         isLoading = true
@@ -148,11 +148,18 @@ struct AddFeedView: View {
         parsedFeed = nil
 
         // 根据是否启用全文模式决定使用的 URL
-        let fetchURL = useFullText ? "https://feedex.net/feed/\(finalURL)" : finalURL
+        let fetchURLString =
+            useFullText ? "https://feedex.net/feed/\(finalURLString)" : finalURLString
+
+        guard let fetchURL = URL(string: fetchURLString) else {
+            errorMessage = "无效的 URL"
+            isLoading = false
+            return
+        }
 
         do {
             parsedFeed = try await RSSService.shared.fetchFeed(from: fetchURL)
-            urlString = finalURL
+            urlString = finalURLString
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -161,11 +168,13 @@ struct AddFeedView: View {
     }
 
     private func addFeed() {
-        guard let parsed = parsedFeed else { return }
+        guard let parsed = parsedFeed,
+            let feedURL = URL(string: urlString)
+        else { return }
 
         let feed = Feed(
             title: parsed.title,
-            url: urlString,
+            url: feedURL,
             feedDescription: parsed.description,
             imageURL: parsed.imageURL,
             useFullText: useFullText
@@ -174,9 +183,10 @@ struct AddFeedView: View {
         modelContext.insert(feed)
 
         for parsedArticle in parsed.articles {
+            guard let articleLink = parsedArticle.link else { continue }
             let article = Article(
                 title: parsedArticle.title,
-                link: parsedArticle.link,
+                link: articleLink,
                 articleDescription: parsedArticle.description,
                 content: parsedArticle.content,
                 author: parsedArticle.author,

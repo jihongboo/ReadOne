@@ -9,10 +9,10 @@ import SwiftData
 import SwiftUI
 
 struct FeedArticleListView: View {
+    @Environment(\.modelContext) private var modelContext
     @Environment(\.openWindow) private var openWindow
-    let feed: Feed
+    @Bindable var feed: Feed
     @Binding var selectedArticle: Article?
-    let modelContext: ModelContext
 
     @State private var isRefreshing = false
 
@@ -114,10 +114,11 @@ struct FeedArticleListView: View {
         let existingGuids = Set(feed.articles.map { $0.guid })
 
         for parsedArticle in parsedFeed.articles {
+            guard let articleLink = parsedArticle.link else { continue }
             if !existingGuids.contains(parsedArticle.guid) {
                 let article = Article(
                     title: parsedArticle.title,
-                    link: parsedArticle.link,
+                    link: articleLink,
                     articleDescription: parsedArticle.description,
                     content: parsedArticle.content,
                     author: parsedArticle.author,
@@ -136,8 +137,7 @@ struct FeedArticleListView: View {
     NavigationStack {
         FeedArticleListView(
             feed: MockData.sampleFeed,
-            selectedArticle: .constant(nil),
-            modelContext: PreviewContainer.shared.mainContext
+            selectedArticle: .constant(nil)
         )
     }
     .modelContainer(PreviewContainer.shared)
