@@ -1,0 +1,15 @@
+{
+  "originHash" : "5b06163539fd98509128d5527ad16fcea67ed8583a5d3de24fcfca2ea822a470",
+  "pins" : [
+    {
+      "identity" : "rsparser",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Ranchero-Software/RSParser.git",
+      "state" : {
+        "revision" : "d5b50ff78905ebfaf26dd698e0e5d3ed8269dd9b",
+        "version" : "2.0.3"
+      }
+    }
+  ],
+  "version" : 3
+}
