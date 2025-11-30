@@ -11,9 +11,7 @@ import SwiftUI
 struct ArticleDetailView: View {
     @Bindable var article: Article
     @Environment(\.openURL) private var openURL
-    @State private var summarizationService = SummarizationService()
-    @State private var showSummary = false
-
+    
     var body: some View {
         VStack(spacing: 0) {
             // 文章内容（标题、元信息和正文一起滚动）
@@ -42,52 +40,28 @@ struct ArticleDetailView: View {
             }
         }
         .navigationTitle(article.title)
-        #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-        #endif
+#if os(iOS)
+        .navigationBarTitleDisplayMode(.inline)
+#endif
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
-                // AI 总结按钮
-                if summarizationService.isAvailable {
-                    Button {
-                        if summarizationService.summary.isEmpty && !summarizationService.isLoading {
-                            let content =
-                                article.content.isEmpty
-                                ? article.articleDescription : article.content
-                            Task {
-                                await summarizationService.summarize(
-                                    title: article.title, content: content)
-                            }
-                        }
-                        showSummary = true
-                    } label: {
-                        Image(systemName: "apple.intelligence")
-                            .symbolEffect(.pulse, isActive: summarizationService.isLoading)
-                            .foregroundStyle(
-                                (showSummary && !summarizationService.isLoading)
-                                    ? .orange : .primary)
-                    }
-                    .help("AI 总结")
-                    .popover(isPresented: $showSummary) {
-                        AISummaryPopoverView(service: summarizationService)
-                    }
-                }
-
+                AISummaryButton(article: article)
+                
                 Button {
                     article.isStarred.toggle()
                 } label: {
                     Image(systemName: article.isStarred ? "star.fill" : "star")
                         .foregroundStyle(article.isStarred ? .orange : .primary)
                 }
-
+                
                 Button {
                     article.isRead.toggle()
                 } label: {
                     Image(systemName: article.isRead ? "envelope.open" : "envelope")
                 }
-
+                
                 ShareLink(item: article.link)
-
+                
                 Button {
                     openURL(article.link)
                 } label: {
@@ -99,56 +73,7 @@ struct ArticleDetailView: View {
             if !article.isRead {
                 article.isRead = true
             }
-            // 切换文章时清除之前的总结
-            summarizationService.clear()
-            showSummary = false
         }
-    }
-}
-
-// MARK: - AI Summary Popover View
-struct AISummaryPopoverView: View {
-    var service: SummarizationService
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Label("AI 总结", systemImage: "sparkles")
-                        .font(.headline)
-
-                    Spacer()
-
-                    if service.isLoading {
-                        ProgressView()
-                            .controlSize(.small)
-                    }
-                }
-
-                Divider()
-
-                if let error = service.error {
-                    HStack(alignment: .top) {
-                        Image(systemName: "exclamationmark.triangle")
-                            .foregroundStyle(.orange)
-                        Text(error)
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                } else if service.isLoading {
-                    Text("正在生成总结...")
-                        .foregroundStyle(.secondary)
-                } else if !service.summary.isEmpty {
-                    Text(service.summary)
-                        .fixedSize(horizontal: false, vertical: true)
-                } else {
-                    Text("暂无总结")
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .padding()
-        }
-        .frame(width: 350, height: 400)
     }
 }
 

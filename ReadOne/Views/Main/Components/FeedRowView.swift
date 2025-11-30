@@ -32,7 +32,7 @@ struct FeedRowView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             if feed.unreadCount > 0 {
-                Text("\(feed.unreadCount)")
+                Text(verbatim: "\(feed.unreadCount)")
                     .font(.callout)
                     .fontWeight(.medium)
                     .foregroundStyle(.secondary)

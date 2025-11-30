@@ -32,7 +32,7 @@ struct SidebarView: View {
                     HStack {
                         Text("All Articles")
                             .frame(maxWidth: .infinity, alignment: .leading)
-                        Text("\(totalUnreadCount)")
+                        Text(totalUnreadCount, format: .number)
                             .font(.callout)
                             .fontWeight(.medium)
                             .foregroundStyle(.secondary)
@@ -93,12 +93,14 @@ struct SidebarView: View {
                 .disabled(isRefreshing)
             }
         }
+        #if os(macOS)
         .onDeleteCommand {
             if case .feed(let feed) = selectedSection {
                 feedToDelete = feed
                 showingDeleteConfirmation = true
             }
         }
+        #endif
         .confirmationDialog(
             "Delete \"\(feedToDelete?.title ?? "Feed")\"?",
             isPresented: $showingDeleteConfirmation,
@@ -141,7 +143,7 @@ struct SidebarView: View {
                 let parsedFeed = try await RSSService.shared.fetchFeed(from: feed.fetchURL)
                 updateFeed(feed, with: parsedFeed)
             } catch {
-                print("刷新订阅源失败: \(feed.title) - \(error.localizedDescription)")
+                print("Failed to refresh feed: \(feed.title) - \(error.localizedDescription)")
             }
         }
     }

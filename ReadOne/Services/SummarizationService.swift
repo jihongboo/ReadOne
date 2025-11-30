@@ -12,51 +12,63 @@ import Observation
     import FoundationModels
 #endif
 
+enum SummarizationError: LocalizedError {
+    case deviceNotEligible
+    case appleIntelligenceNotEnabled
+    case modelNotReady
+    case unsupportedSystemVersion
+    case foundationModelsNotSupported
+    case unknownStatus
+
+    var errorDescription: String? {
+        switch self {
+        case .deviceNotEligible:
+            return String(localized: "Device does not support Apple Intelligence")
+        case .appleIntelligenceNotEnabled:
+            return String(localized: "Please enable Apple Intelligence in System Settings")
+        case .modelNotReady:
+            return String(localized: "AI model is downloading, please try again later")
+        case .unsupportedSystemVersion:
+            return String(localized: "Requires iOS 26.0 or macOS 26.0 or later")
+        case .foundationModelsNotSupported:
+            return String(localized: "Current system does not support Foundation Models")
+        case .unknownStatus:
+            return String(localized: "AI feature is temporarily unavailable")
+        }
+    }
+}
+
 /// 文章内容总结服务，使用 Apple Foundation Models 框架
 @Observable
 final class SummarizationService {
-    var summary: String = ""
-    var isLoading: Bool = false
-    var error: String?
-    var isAvailable: Bool = false
-    var unavailableReason: String?
-
-    init() {
-        checkAvailability()
-    }
-
     /// 检查设备是否支持 Foundation Models
-    func checkAvailability() {
+    /// - Throws: 当 AI 功能不可用时抛出 SummarizationError
+    static func checkAvailability() throws(SummarizationError) {
         #if canImport(FoundationModels)
             if #available(iOS 26.0, macOS 26.0, *) {
                 let model = SystemLanguageModel.default
                 switch model.availability {
                 case .available:
-                    isAvailable = true
-                    unavailableReason = nil
+                    return
                 case .unavailable(let reason):
-                    isAvailable = false
                     switch reason {
                     case .deviceNotEligible:
-                        unavailableReason = "设备不支持 Apple Intelligence"
+                        throw SummarizationError.deviceNotEligible
                     case .appleIntelligenceNotEnabled:
-                        unavailableReason = "请在系统设置中启用 Apple Intelligence"
+                        throw SummarizationError.appleIntelligenceNotEnabled
                     case .modelNotReady:
-                        unavailableReason = "AI 模型正在下载中，请稍后再试"
+                        throw SummarizationError.modelNotReady
                     @unknown default:
-                        unavailableReason = "AI 功能暂时不可用"
+                        throw SummarizationError.unknownStatus
                     }
                 @unknown default:
-                    isAvailable = false
-                    unavailableReason = "未知状态"
+                    throw SummarizationError.unknownStatus
                 }
             } else {
-                isAvailable = false
-                unavailableReason = "需要 iOS 26.0 或 macOS 26.0 以上系统"
+                throw SummarizationError.unsupportedSystemVersion
             }
         #else
-            isAvailable = false
-            unavailableReason = "当前系统不支持 Foundation Models"
+            throw SummarizationError.foundationModelsNotSupported
         #endif
     }
 
@@ -64,54 +76,42 @@ final class SummarizationService {
     /// - Parameters:
     ///   - title: 文章标题
     ///   - content: 文章内容（HTML或纯文本）
-    func summarize(title: String, content: String) async {
-        guard isAvailable else {
-            error = unavailableReason ?? "AI 总结功能不可用"
-            return
-        }
-
-        isLoading = true
-        error = nil
-        summary = ""
+    /// - Returns: 生成的摘要文本
+    /// - Throws: 当 AI 功能不可用或总结失败时抛出错误
+    static func summarize(article: Article) async throws -> String {
+        try Self.checkAvailability()
 
         #if canImport(FoundationModels)
             if #available(iOS 26.0, macOS 26.0, *) {
-                do {
-                    let session = LanguageModelSession()
+                let session = LanguageModelSession()
 
-                    // 清理HTML标签获取纯文本
-                    let plainText = content.stripHTMLForSummary()
+                // 清理HTML标签获取纯文本
+                let content = article.content.isEmpty ? article.articleDescription : article.content
+                let plainText = content.stripHTMLForSummary()
 
-                    // 限制内容长度以避免超出模型限制
-                    let truncatedContent = String(plainText.prefix(4000))
+                // 限制内容长度以避免超出模型限制
+                let truncatedContent = String(plainText.prefix(4000))
 
-                    let prompt = """
-                        请用中文总结以下文章的核心内容，要求：
-                        1. 总结要简洁明了，控制在200字以内
-                        2. 提取文章的主要观点和关键信息
-                        3. 使用清晰的语言表达
+                let promptTemplate = String(
+                    localized: """
+                        Please summarize the core content of the following article. Requirements:
+                        1. The summary should be concise and clear, within 200 words
+                        2. Extract the main points and key information
+                        3. Use clear language
 
-                        文章标题：\(title)
+                        Article title: %@
 
-                        文章内容：
-                        \(truncatedContent)
-                        """
+                        Article content:
+                        %@
+                        """)
+                let prompt = String(format: promptTemplate, article.title, truncatedContent)
 
-                    let response = try await session.respond(to: prompt)
-                    summary = response.content
-                } catch {
-                    self.error = "总结失败：\(error.localizedDescription)"
-                }
+                let response = try await session.respond(to: prompt)
+                return response.content
             }
         #endif
 
-        isLoading = false
-    }
-
-    /// 清除当前总结
-    func clear() {
-        summary = ""
-        error = nil
+        return ""
     }
 }
 

@@ -34,9 +34,9 @@ struct FeedArticleListView: View {
                             deleteArticle(article)
                         }
                     }
-                    .onDoubleClick {
+                    .gesture(TapGesture(count: 2).onEnded {
                         openWindow(value: article.persistentModelID)
-                    }
+                    })
             }
             .onDelete(perform: deleteArticles)
         }
@@ -104,7 +104,7 @@ struct FeedArticleListView: View {
             let parsedFeed = try await RSSService.shared.fetchFeed(from: feed.fetchURL)
             updateFeed(with: parsedFeed)
         } catch {
-            print("刷新失败: \(error.localizedDescription)")
+            print("Refresh failed: \(error.localizedDescription)")
         }
     }
 

@@ -48,7 +48,7 @@ struct ReadOneApp: App {
             }
         }
 
-        WindowGroup("文章详情", for: PersistentIdentifier.self) { $articleID in
+        WindowGroup("Article Detail", for: PersistentIdentifier.self) { $articleID in
             if let articleID {
                 ArticleWindowContainer(articleID: articleID)
                     .modelContainer(sharedModelContainer)
@@ -64,7 +64,7 @@ struct OpenInNewWindowCommand: View {
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
-        Button("在新窗口中打开") {
+        Button("Open in New Window") {
             if let article = selectedArticle {
                 openWindow(value: article.persistentModelID)
             }
@@ -85,9 +85,9 @@ struct ArticleWindowContainer: View {
             ArticleDetailWindow(article: article)
         } else {
             ContentUnavailableView(
-                "文章不存在",
+                "Article Not Found",
                 systemImage: "doc.questionmark",
-                description: Text("无法找到该文章")
+                description: Text("Unable to find this article")
             )
         }
     }

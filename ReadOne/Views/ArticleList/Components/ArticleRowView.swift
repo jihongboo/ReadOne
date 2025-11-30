@@ -26,7 +26,7 @@ struct ArticleRowView: View {
                         let star = Text(Image(systemName: "star.fill"))
                             .foregroundStyle(.orange)
                             .font(.caption)
-                        Text("\(star) \(article.title)")
+                        Text(verbatim: "\(star) \(article.title)")
                     } else {
                         Text(article.title)
                     }
@@ -50,15 +50,18 @@ struct ArticleRowView: View {
             }
 
             if let imageURL = article.imageURL {
-                AsyncImage(url: imageURL) { image in
-                    image
-                        .resizable()
-                        .aspectRatio(1, contentMode: .fit)
-                } placeholder: {
-                    Color.gray.opacity(0.2)
-                        .aspectRatio(1, contentMode: .fit)
+                GeometryReader { geometry in
+                    AsyncImage(url: imageURL) { image in
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: geometry.size.height, height: geometry.size.height)
+                    } placeholder: {
+                        Color.secondary
+                            .frame(width: geometry.size.height, height: geometry.size.height)
+                    }
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
                 }
-                .clipShape(RoundedRectangle(cornerRadius: 8))
             }
         }
         .frame(height: 80)
@@ -73,7 +76,7 @@ struct ArticleRowView: View {
                 Text(article.publishedDate, style: .relative)
 
                 if !isCompact, !article.author.isEmpty {
-                    Text("·")
+                    Text(verbatim: "·")
                     Text(article.author)
                         .lineLimit(1)
                 }

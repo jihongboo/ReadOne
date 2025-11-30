@@ -28,9 +28,9 @@ struct AllArticlesView: View {
                             deleteArticle(article)
                         }
                     }
-                    .onDoubleClick {
+                    .gesture(TapGesture(count: 2).onEnded {
                         openWindow(value: article.persistentModelID)
-                    }
+                    })
             }
             .onDelete(perform: deleteArticles)
         }
@@ -59,6 +59,7 @@ struct AllArticlesView: View {
 #Preview {
     NavigationStack {
         AllArticlesView(selectedArticle: .constant(nil))
+            .frame(width: 300)
     }
     .modelContainer(PreviewContainer.shared)
 }

@@ -32,9 +32,9 @@ struct StarredArticlesView: View {
                             deleteArticle(article)
                         }
                     }
-                    .onDoubleClick {
+                    .gesture(TapGesture(count: 2).onEnded {
                         openWindow(value: article.persistentModelID)
-                    }
+                    })
             }
             .onDelete(perform: deleteArticles)
         }

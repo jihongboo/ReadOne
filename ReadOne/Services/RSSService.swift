@@ -18,15 +18,15 @@ enum RSSError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidURL:
-            return "无效的URL"
+            return String(localized: "Invalid URL")
         case .networkError(let error):
-            return "网络错误: \(error.localizedDescription)"
+            return String(localized: "Network error: \(error.localizedDescription)")
         case .parseError(let error):
-            return "解析错误: \(error.localizedDescription)"
+            return String(localized: "Parse error: \(error.localizedDescription)")
         case .noData:
-            return "没有数据"
+            return String(localized: "No data")
         case .unsupportedFeed:
-            return "不支持的订阅源格式"
+            return String(localized: "Unsupported feed format")
         }
     }
 }
@@ -89,7 +89,7 @@ class RSSService {
             let imageURL = extractImageURL(from: item)
 
             return ParsedArticleResult(
-                title: item.title ?? "无标题",
+                title: item.title ?? String(localized: "Untitled"),
                 link: URL(string: item.url ?? item.externalURL ?? ""),
                 description: item.summary ?? "",
                 content: item.contentHTML ?? item.contentText ?? item.summary ?? "",
@@ -100,10 +100,20 @@ class RSSService {
             )
         }
 
+        // 获取图标 URL，如果 feed 没有提供则使用网站 favicon
+        var imageURL: URL? = parsedFeed.iconURL.flatMap { URL(string: $0) }
+
+        if imageURL == nil, let feedURL = URL(string: url),
+            let host = feedURL.host
+        {
+            // 使用 Google Favicon 服务作为备选
+            imageURL = URL(string: "https://www.google.com/s2/favicons?domain=\(host)&sz=128")
+        }
+
         return ParsedFeedResult(
-            title: parsedFeed.title ?? "未知订阅源",
+            title: parsedFeed.title ?? String(localized: "Unknown Feed"),
             description: parsedFeed.homePageURL ?? "",
-            imageURL: parsedFeed.iconURL.flatMap { URL(string: $0) },
+            imageURL: imageURL,
             articles: articles
         )
     }

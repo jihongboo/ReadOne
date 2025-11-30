@@ -5,7 +5,6 @@
 //  Created by 纪洪波 on 11/30/25.
 //
 
-import RSParser
 import SwiftData
 import SwiftUI
 
@@ -17,7 +16,7 @@ struct AddFeedView: View {
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var parsedFeed: ParsedFeedResult?
-    @State private var useFullText = true
+    @State private var useFullText = false
 
     var body: some View {
         NavigationStack {
@@ -42,8 +41,12 @@ struct AddFeedView: View {
 
                 if let error = errorMessage {
                     Section {
-                        Label(error, systemImage: "exclamationmark.triangle")
-                            .foregroundStyle(.red)
+                        Label {
+                            Text(verbatim: error)
+                        } icon: {
+                            Image(systemName: "exclamationmark.triangle")
+                        }
+                        .foregroundStyle(.red)
                     }
                 }
 
@@ -66,9 +69,11 @@ struct AddFeedView: View {
                     }
 
                     Section {
-                        Toggle("获取全文内容", isOn: $useFullText)
+                        Toggle("Full Text Mode", isOn: $useFullText)
                     } footer: {
-                        Text("使用 FeedEx 服务获取完整文章内容，而非 RSS 摘要")
+                        Text(
+                            "Use FeedEx service to fetch full article content instead of RSS summary"
+                        )
                     }
                 }
 
@@ -152,7 +157,7 @@ struct AddFeedView: View {
             useFullText ? "https://feedex.net/feed/\(finalURLString)" : finalURLString
 
         guard let fetchURL = URL(string: fetchURLString) else {
-            errorMessage = "无效的 URL"
+            errorMessage = String(localized: "Invalid URL")
             isLoading = false
             return
         }
