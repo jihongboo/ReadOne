@@ -16,9 +16,6 @@ struct SidebarView: View {
     @Binding var selectedSection: SidebarSection?
 
     @State private var showingAddFeed = false
-    @State private var showingDeleteConfirmation = false
-    @State private var feedToDelete: Feed?
-    @State private var isRefreshing = false
 
     private var totalUnreadCount: Int {
         allArticles.filter { !$0.isRead }.count
@@ -42,29 +39,22 @@ struct SidebarView: View {
                 }
             }
 
-            // 收藏文章入口
-            NavigationLink(value: SidebarSection.starred) {
-                Label("Starred", systemImage: "star")
-                    .foregroundStyle(.orange)
+            // 发现入口
+            NavigationLink(value: SidebarSection.discover) {
+                Label("Discover", systemImage: "sparkles")
+                    .foregroundStyle(.purple)
+            }
+
+            // 搜索入口
+            NavigationLink(value: SidebarSection.search) {
+                Label("Search", systemImage: "magnifyingglass")
+                    .foregroundStyle(.blue)
             }
 
             // 订阅源列表
             Section("Feeds") {
                 ForEach(feeds) { feed in
-                    NavigationLink(value: SidebarSection.feed(feed)) {
-                        FeedRowView(feed: feed) {
-                            feedToDelete = feed
-                            showingDeleteConfirmation = true
-                        }
-                    }
-                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                        Button(role: .destructive) {
-                            feedToDelete = feed
-                            showingDeleteConfirmation = true
-                        } label: {
-                            Label("Delete", systemImage: "trash")
-                        }
-                    }
+                    FeedRowView(feed: feed, selectedSection: $selectedSection)
                 }
             }
         }
@@ -77,52 +67,6 @@ struct SidebarView: View {
                     Image(systemName: "plus")
                 }
             }
-
-            ToolbarItem(placement: .automatic) {
-                Button {
-                    Task {
-                        await refreshAllFeeds()
-                    }
-                } label: {
-                    if isRefreshing {
-                        ProgressView()
-                    } else {
-                        Image(systemName: "arrow.clockwise")
-                    }
-                }
-                .disabled(isRefreshing)
-            }
-        }
-        #if os(macOS)
-        .onDeleteCommand {
-            if case .feed(let feed) = selectedSection {
-                feedToDelete = feed
-                showingDeleteConfirmation = true
-            }
-        }
-        #endif
-        .confirmationDialog(
-            "Delete \"\(feedToDelete?.title ?? "Feed")\"?",
-            isPresented: $showingDeleteConfirmation,
-            titleVisibility: .visible
-        ) {
-            Button("Delete", role: .destructive) {
-                if let feed = feedToDelete {
-                    if case .feed(let selectedFeed) = selectedSection,
-                        selectedFeed.id == feed.id
-                    {
-                        selectedSection = .allArticles
-                    }
-                    modelContext.delete(feed)
-                    feedToDelete = nil
-                }
-            }
-            Button("Cancel", role: .cancel) {
-                feedToDelete = nil
-            }
-        } message: {
-            Text(
-                "This will delete the feed and all its articles. This action cannot be undone.")
         }
         .refreshable {
             await refreshAllFeeds()
@@ -135,15 +79,25 @@ struct SidebarView: View {
     // MARK: - Actions
 
     private func refreshAllFeeds() async {
-        isRefreshing = true
-        defer { isRefreshing = false }
+        let feedsToRefresh = feeds.map { ($0.persistentModelID, $0.fetchURL, $0.title) }
 
-        for feed in feeds {
-            do {
-                let parsedFeed = try await RSSService.shared.fetchFeed(from: feed.fetchURL)
-                updateFeed(feed, with: parsedFeed)
-            } catch {
-                print("Failed to refresh feed: \(feed.title) - \(error.localizedDescription)")
+        await withTaskGroup(of: (PersistentIdentifier, ParsedFeedResult?).self) { group in
+            for (feedID, fetchURL, title) in feedsToRefresh {
+                group.addTask {
+                    do {
+                        let parsedFeed = try await RSSService.shared.fetchFeed(from: fetchURL)
+                        return (feedID, parsedFeed)
+                    } catch {
+                        print("Failed to refresh feed: \(title) - \(error.localizedDescription)")
+                        return (feedID, nil)
+                    }
+                }
+            }
+
+            for await (feedID, parsedFeed) in group {
+                if let parsedFeed, let feed = modelContext.model(for: feedID) as? Feed {
+                    updateFeed(feed, with: parsedFeed)
+                }
             }
         }
     }

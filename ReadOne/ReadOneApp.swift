@@ -27,6 +27,7 @@ struct ReadOneApp: App {
         let schema = Schema([
             Feed.self,
             Article.self,
+            RSSHubInstance.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
@@ -39,7 +40,7 @@ struct ReadOneApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            MainPage()
         }
         .modelContainer(sharedModelContainer)
         .commands {

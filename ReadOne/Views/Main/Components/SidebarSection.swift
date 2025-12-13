@@ -9,6 +9,7 @@ import Foundation
 
 enum SidebarSection: Hashable {
     case allArticles
-    case starred
+    case discover
+    case search
     case feed(Feed)
 }

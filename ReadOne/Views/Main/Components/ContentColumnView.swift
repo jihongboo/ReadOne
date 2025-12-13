@@ -17,8 +17,10 @@ struct ContentColumnView: View {
             switch selectedSection {
             case .allArticles:
                 AllArticlesView(selectedArticle: $selectedArticle)
-            case .starred:
-                StarredArticlesView(selectedArticle: $selectedArticle)
+            case .discover:
+                DiscoverView()
+            case .search:
+                SearchFeedView()
             case .feed(let feed):
                 FeedArticleListView(
                     feed: feed,

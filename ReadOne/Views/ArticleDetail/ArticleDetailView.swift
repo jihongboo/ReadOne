@@ -7,24 +7,31 @@
 
 import SwiftData
 import SwiftUI
-import Translation
 
 struct ArticleDetailView: View {
     @Bindable var article: Article
     @Environment(\.openURL) private var openURL
+    @AppStorage(ArticleTextSize.storageKey) private var textSizeRaw: Int = ArticleTextSize.default
+        .rawValue
 
-    @State private var translationConfiguration: TranslationSession.Configuration?
     @State private var translatedTitle: String?
     @State private var translatedContent: String?
     @State private var isTranslated = false
+
+    private var textSize: ArticleTextSize {
+        ArticleTextSize(rawValue: textSizeRaw) ?? .medium
+    }
+
+    private var originalContent: String {
+        article.content.isEmpty ? article.articleDescription : article.content
+    }
 
     private var displayTitle: String {
         isTranslated ? (translatedTitle ?? article.title) : article.title
     }
 
     private var displayContent: String {
-        let originalContent = article.content.isEmpty ? article.articleDescription : article.content
-        return isTranslated ? (translatedContent ?? originalContent) : originalContent
+        isTranslated ? (translatedContent ?? originalContent) : originalContent
     }
 
     var body: some View {
@@ -52,19 +59,7 @@ struct ArticleDetailView: View {
         #endif
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
-                AISummaryButton(article: article)
-
-                Button {
-                    if isTranslated {
-                        isTranslated = false
-                    } else {
-                        triggerTranslation()
-                    }
-                } label: {
-                    Image(systemName: "translate")
-                        .foregroundStyle(isTranslated ? Color.accentColor : .primary)
-                }
-
+                // 收藏
                 Button {
                     article.isStarred.toggle()
                 } label: {
@@ -72,39 +67,66 @@ struct ArticleDetailView: View {
                         .foregroundStyle(article.isStarred ? .orange : .primary)
                 }
 
-                Button {
-                    article.isRead.toggle()
-                } label: {
-                    Image(systemName: article.isRead ? "envelope.open" : "envelope")
-                }
-
+                // 分享
                 ShareLink(item: article.link)
 
-                Button {
-                    openURL(article.link)
+                // AI 摘要
+                AISummaryButton(article: article)
+
+                // 更多操作菜单
+                Menu {
+                    // 翻译
+                    TranslateButton(
+                        title: article.title,
+                        content: originalContent,
+                        translatedTitle: $translatedTitle,
+                        translatedContent: $translatedContent,
+                        isTranslated: $isTranslated
+                    )
+
+                    // 在浏览器中打开
+                    Button {
+                        openURL(article.link)
+                    } label: {
+                        Label(String(localized: "Open in Browser"), systemImage: "safari")
+                    }
+
+                    Divider()
+
+                    // 已读/未读
+                    Button {
+                        article.isRead.toggle()
+                    } label: {
+                        Label(
+                            article.isRead
+                                ? String(localized: "Mark as Unread")
+                                : String(localized: "Mark as Read"),
+                            systemImage: article.isRead ? "envelope.badge" : "envelope.open"
+                        )
+                    }
+
+                    Divider()
+
+                    // 文字大小
+                    Menu {
+                        ForEach(ArticleTextSize.allCases) { size in
+                            Button {
+                                textSizeRaw = size.rawValue
+                            } label: {
+                                HStack {
+                                    Text(size.displayName)
+                                    if textSize == size {
+                                        Image(systemName: "checkmark")
+                                    }
+                                }
+                            }
+                        }
+                    } label: {
+                        Label(String(localized: "Text Size"), systemImage: "textformat.size")
+                    }
                 } label: {
-                    Image(systemName: "safari")
+                    Image(systemName: "ellipsis.circle")
                 }
-            }
-        }
-        .translationTask(translationConfiguration) { @MainActor session in
-            let originalContent =
-                article.content.isEmpty ? article.articleDescription : article.content
-
-            let requests = [
-                TranslationSession.Request(sourceText: article.title),
-                TranslationSession.Request(sourceText: originalContent.strippingHTML()),
-            ]
-
-            do {
-                let responses = try await session.translations(from: requests)
-                if responses.count >= 2 {
-                    translatedTitle = responses[0].targetText
-                    translatedContent = responses[1].targetText
-                    isTranslated = true
-                }
-            } catch {
-                print("Translation failed: \(error)")
             }
         }
         .task(id: article.id) {
@@ -117,37 +139,6 @@ struct ArticleDetailView: View {
             isTranslated = false
         }
     }
-
-    private func triggerTranslation() {
-        if translatedContent != nil {
-            // 已有翻译结果，直接显示
-            isTranslated = true
-        } else {
-            // 触发翻译
-            translationConfiguration = .init()
-        }
-    }
-}
-
-// MARK: - String Extension for HTML Stripping
-
-extension String {
-    func strippingHTML() -> String {
-        guard let data = self.data(using: .utf8) else { return self }
-
-        let options: [NSAttributedString.DocumentReadingOptionKey: Any] = [
-            .documentType: NSAttributedString.DocumentType.html,
-            .characterEncoding: String.Encoding.utf8.rawValue,
-        ]
-
-        if let attributedString = try? NSAttributedString(
-            data: data, options: options, documentAttributes: nil)
-        {
-            return attributedString.string
-        }
-
-        return self.replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
-    }
 }
 
 #Preview {
@@ -155,5 +146,4 @@ extension String {
         ArticleDetailView(article: MockData.sampleArticle)
     }
     .modelContainer(PreviewContainer.shared)
-    .frame(height: 600)
 }

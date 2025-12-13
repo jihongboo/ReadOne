@@ -13,12 +13,9 @@ struct AISummaryButton: View {
     @State private var showSummary = false
 
     var body: some View {
-        Button {
+        Button(String(localized: "AI Summary"), systemImage: "apple.intelligence") {
             showSummary = true
-        } label: {
-            Image(systemName: "apple.intelligence")
         }
-        .help("AI Summary")
         .popover(isPresented: $showSummary) {
             AISummaryPopoverView(article: article)
         }

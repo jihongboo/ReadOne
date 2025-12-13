@@ -9,7 +9,7 @@ import SwiftUI
 
 struct AISummaryPopoverView: View {
     let article: Article
-    
+
     @State private var summary = ""
     @State private var error: Error? = nil
     @State private var isLoading = true
@@ -52,7 +52,6 @@ struct AISummaryPopoverView: View {
             }
             .padding()
         }
-        .frame(width: 350, height: 400)
         .task {
             do {
                 summary = try await SummarizationService.summarize(article: article)
@@ -63,4 +62,14 @@ struct AISummaryPopoverView: View {
             }
         }
     }
+}
+
+#Preview("Loading") {
+    AISummaryPopoverView(article: MockData.sampleArticle)
+        .frame(width: 300, height: 200)
+}
+
+#Preview("With Summary") {
+    AISummaryPopoverView(article: MockData.sampleArticle)
+        .frame(width: 300, height: 200)
 }

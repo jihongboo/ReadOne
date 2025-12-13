@@ -10,63 +10,70 @@ import SwiftUI
 
 struct FeedArticleListView: View {
     @Environment(\.modelContext) private var modelContext
-    @Environment(\.openWindow) private var openWindow
     @Bindable var feed: Feed
     @Binding var selectedArticle: Article?
 
-    @State private var isRefreshing = false
+    @State private var articleFilter: ArticleFilter = .all
 
     var sortedArticles: [Article] {
-        feed.articles.sorted { $0.publishedDate > $1.publishedDate }
+        var result = feed.articles.sorted { $0.publishedDate > $1.publishedDate }
+
+        switch articleFilter {
+        case .all:
+            break
+        case .unread:
+            result = result.filter { !$0.isRead }
+        case .starred:
+            result = result.filter { $0.isStarred }
+        }
+
+        return result
     }
 
     var body: some View {
         List(selection: $selectedArticle) {
             ForEach(sortedArticles) { article in
-                ArticleRowView(article: article)
-                    .tag(article)
-                    .contextMenu {
-                        Button("Open in New Window") {
-                            openWindow(value: article.persistentModelID)
-                        }
-                        Divider()
-                        Button("Delete", role: .destructive) {
-                            deleteArticle(article)
-                        }
-                    }
+                ArticleRowView(article: article, selectedArticle: $selectedArticle)
             }
-            .onDelete(perform: deleteArticles)
         }
         .focusedSceneValue(\.selectedArticle, selectedArticle)
         .navigationTitle(feed.title)
         .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    Task {
-                        await refreshFeed()
-                    }
-                } label: {
-                    if isRefreshing {
-                        ProgressView()
-                    } else {
-                        Image(systemName: "arrow.clockwise")
-                    }
-                }
-                .disabled(isRefreshing)
-            }
-
-            ToolbarItem {
-                Menu {
-                    Button("Mark All as Read") {
-                        markAllAsRead()
-                    }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                }
-            }
+            toolbarContent
         }
         .refreshable {
             await refreshFeed()
+        }
+    }
+
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .primaryAction) {
+            Menu {
+                ForEach(ArticleFilter.allCases, id: \.self) { filter in
+                    Button {
+                        articleFilter = filter
+                    } label: {
+                        Label(filter.rawValue, systemImage: filter.systemImage)
+                    }
+                }
+            } label: {
+                Label(
+                    articleFilter.rawValue,
+                    systemImage: articleFilter == .all
+                        ? "line.3.horizontal.decrease.circle"
+                        : "line.3.horizontal.decrease.circle.fill")
+            }
+        }
+
+        ToolbarItem {
+            Menu {
+                Button("Mark All as Read") {
+                    markAllAsRead()
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+            }
         }
     }
 
@@ -76,27 +83,7 @@ struct FeedArticleListView: View {
         }
     }
 
-    private func deleteArticles(at offsets: IndexSet) {
-        for index in offsets {
-            let article = sortedArticles[index]
-            if selectedArticle == article {
-                selectedArticle = nil
-            }
-            modelContext.delete(article)
-        }
-    }
-
-    private func deleteArticle(_ article: Article) {
-        if selectedArticle == article {
-            selectedArticle = nil
-        }
-        modelContext.delete(article)
-    }
-
     private func refreshFeed() async {
-        isRefreshing = true
-        defer { isRefreshing = false }
-
         do {
             let parsedFeed = try await RSSService.shared.fetchFeed(from: feed.fetchURL)
             updateFeed(with: parsedFeed)
